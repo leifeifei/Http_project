@@ -1,0 +1,78 @@
+1.什么是http server?
+    遵循HTTP协议，响应HTTP客户端的request，然后返回response。
+
+2.什么是HTTP协议？
+    最简单的例子，就是浏览器与网页服务器之间使用的应用层协议。虽然官方文档说HTTP
+    协议可以建立在任何可靠传输的协议之上，但是就我们所见到的，HTTP还是建立在TCP之上的。
+    http是最简单的response是，返回静态的HTML页面。在这里我的目标也只是一个响应静态网页的http而已。
+ 
+ - HTTP协议结构
+  HTTP协议无论是请求报文(request message)还是回应报文(response message)都分为四部分：
+  * 报文头 (initial line )
+  * 0个或多个header line
+  * 空行(作为header lines的结束)
+  * 可选body
+  HTTP协议是基于行的协议，每一行以\r\n作为分隔符。报文头通常表明报文的类型(例如请求类型)，报文头只占一行；
+  header line附带一些特殊信息，每一个header line占一行，其格式为name:value，即以分号作为分隔；空行也就是
+  一个\r\n；可选body通常包含数据，例如服务器返回的某个静态HTML文件的内容。
+  举个例子，以下是一个很常见的请求报文，你可以截获浏览器发送的数据包而获得：
+
+    1  GET /index.html HTTP/1.1
+    2  Accept-Language: zh-cn
+    3  Accept-Encoding: gzip, deflate
+    4  User-Agent: Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1; SV1; .NET CLR 2.0.50727; MAXTHON 2.0)
+    5  Host: localhost
+    6  Connection: Keep-Alive
+    7
+   第1行就是initial line，2-6行是header lines，7行是一个header line的结束符，没有显示出来。
+
+  因为我们做的是服务器端，所以我们重点对请求报文做说明。
+
+  1.首先看initial line，该行包含几个字段，每个字段用空格分开，可以分为三部分：GET、/index.html、HTTP/1.1。
+  a.第一个字段GET就是所谓的request method。它表明请求类型，HTTP有很多method，例如：GET、POST、HEAD等。
+    GET是最普遍的method，表示请求一个资源。什么是资源？诸如HTML网页、图片、声音文件等都是资源。
+  b.第二个字段是资源名，可以看出，也就是文件名，例如这里的/index.html
+  c.最后一个字段表明HTTP协议版本号。目前我们只需要支持HTTP1.1和1.0。
+
+  2.然后是header line。
+  - Host : 对于HTTP1.1而言，请求报文中必须包含此header，如果没有包含，服务器需要返回bad request错误信息。
+  - Date : 用于回应报文，用于客户端缓存数据用。
+  - Content-Type : 用于回应报文，表示回应资源的文件类型，以MIME形式给出。什么是MIME？它们都有自己的格式，
+  例如：
+    text/html, image/jpg, image/gif等。
+  - Content-Length : 用于回应报文，表示回应资源的文件长度。
+
+   3.body域很简单，你只需要将一个文件全部读入内存，然后附加到回应报文段后发送即可。
+
+- 回应报文
+    1  HTTP/1.1 200 OK
+    2  Server: LF_server
+    3  Content-Type: text/html
+    4  Content-Length: 67
+    5
+    6  <head><head><title>index.html</title></head><body>index.html</body>
+    第6行就是可选的body，这里是index.html这个文件的内容。
+
+  a.首先是initial line，第一个字段表明HTTP协议版本，可以直接以请求报文为准(即请求报文版本是多少这里就是多少)
+  b.第二个字段是一个statuscode，也就是回应状态，相当于请求结果，请求结果被HTTP官方事先定义，例如200表示成功、
+    404表示资源不存在,501表示请求类型不支持等。
+  c.最后一个字段为status code的可读字符串，你随便给吧。
+  d.回应报文中最好跟上Content-Type、Content-Length等header。
+
+具体实现
+    写代码之前需要明白HTTP协议的这种请求/回应模式，即客户端发出一个请求，然后服务器端回应该请求。
+    然后继续这个过程
+    这里，我们无论客户端，例如浏览器，发出什么样的请求，请求什么资源，我们都回应相同的数据
+
+
+工作流程
+（1）初始化 http 服务，在指定端口或随机选取端口绑定 http服务。
+（2）收到一个 HTTP 请求时（其实就是 listen 的端口 accpet 的时候），派生一个线程运行 accept_request 函数。
+（3）取出 HTTP 请求报文的每一部分 请求类型 请求文件 版本号 及文件类型,
+     a.若不是GET则，返回客户端该请求类型不支持，
+     b.判断请求文件是否存在，若不存在，返回客户端该文件不存在
+     c.若该请求文件大小 小于零，则返回客户端这是个错误请求
+（4）若（3）的条件都满足，回应客户端的请求报文。
+（5） 关闭与浏览器的连接，完成了一次 HTTP 请求与回应，因为 HTTP 是无连接的。
+
+
